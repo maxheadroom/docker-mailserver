@@ -1,6 +1,10 @@
 # docker-mailserver
 
-[![Build Status](https://travis-ci.org/tomav/docker-mailserver.svg?branch=master)](https://travis-ci.org/tomav/docker-mailserver)
+This is a fork of the wonderful Docker Mailserver by Tomav: https://github.com/tomav/docker-mailserver
+
+I've taken the liberty to replace the Courier Mail Server with Cyrus
+
+-----
 
 A fullstack but simple mail server (smtp, imap, antispam, antivirus...).  
 Only configuration files, no SQL database. Keep it simple and versioned.  
@@ -9,21 +13,15 @@ Easy to deploy and upgrade.
 Includes:
 
 - postfix with smtp auth
-- courier-imap with ssl support
+- cyrus imapd with ssl support
 - amavis
 - spamassasin supporting custom rules
 - clamav with automatic updates
 - opendkim
-- opendmarc 
+- opendmarc
 - fail2ban
 - [LetsEncrypt](https://letsencrypt.org/) and self-signed certificates
 - optional pop3 server
-- [integration tests](https://travis-ci.org/tomav/docker-mailserver) 
-- [automated builds on docker hub](https://hub.docker.com/r/tvial/docker-mailserver/)
-
-Why I created this image: [Simple mail server with Docker](http://tvi.al/simple-mail-server-with-docker/)
-
-Before you open an issue, please have a look this `README`, the [FAQ](https://github.com/tomav/docker-mailserver/wiki/FAQ) and Postfix documentation. 
 
 ## Usage
 
@@ -69,7 +67,7 @@ An alias is a full email address that will be:
 * delivered to an existing account in `postfix/accounts.cf`
 * redirected to one or more other email adresses
 
-Alias and target are space separated. 
+Alias and target are space separated.
 
 Example:
 

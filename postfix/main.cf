@@ -6,11 +6,11 @@ append_dot_mydomain = no
 readme_directory = no
 
 # Basic configuration
-# myhostname = 
+# myhostname =
 alias_maps = hash:/etc/aliases
 alias_database = hash:/etc/aliases
-mydestination = 
-relayhost = 
+mydestination =
+relayhost =
 mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 172.17.0.0/16
 mailbox_size_limit = 0
 recipient_delimiter = +
@@ -54,6 +54,7 @@ virtual_mailbox_maps = hash:/etc/postfix/vmailbox
 virtual_alias_maps = hash:/etc/postfix/virtual
 virtual_uid_maps = static:5000
 virtual_gid_maps = static:5000
+virtual_transport = lmtp:unix:/var/run/cyrus/socket/lmtp
 
 # Additional option for filtering
 content_filter = smtp-amavis:[127.0.0.1]:10024

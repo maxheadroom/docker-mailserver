@@ -1,10 +1,10 @@
-NAME = tvial/docker-mailserver
+NAME = maxheadroom/docker-mailserver
 
 all: build run fixtures tests clean
 all-no-build: run fixtures tests clean
 
 build:
-	docker build --no-cache -t $(NAME) . 
+	docker build --no-cache -t $(NAME) .
 
 run:
 	# Copy test files
@@ -36,11 +36,11 @@ run:
 
 fixtures:
 	# Sending test mails
-	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/amavis-spam.txt"		
-	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/amavis-virus.txt"		
-	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/existing-alias-external.txt"		
-	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/existing-alias-local.txt"		
-	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/existing-user.txt"		
+	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/amavis-spam.txt"
+	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/amavis-virus.txt"
+	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/existing-alias-external.txt"
+	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/existing-alias-local.txt"
+	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/existing-user.txt"
 	docker exec mail /bin/sh -c "nc 0.0.0.0 25 < /tmp/test/email-templates/non-existing-user.txt"
 	# Wait for mails to be analyzed
 	sleep 10
@@ -54,3 +54,7 @@ clean:
 	git checkout postfix/accounts.cf postfix/virtual
 	# Remove running test containers
 	docker rm -f mail mail_pop3 mail_smtponly
+
+client:
+	# Start a client connecting to a running mail containers
+	docker exec -t -i dockermailserver_mail_1 /bin/bash

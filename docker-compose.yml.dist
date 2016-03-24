@@ -1,7 +1,7 @@
 mail:
-  image: tvial/docker-mailserver
+  image: maxheadroom/docker-mailserver
   hostname: mail
-  domainname: domain.com
+  domainname: zurell.de
   cap_add:
   - NET_ADMIN
   ports:

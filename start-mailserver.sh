@@ -4,6 +4,24 @@ die () {
   echo >&2 "$@"
   exit 1
 }
+# grant access to cyrus to local admin
+echo "password" | saslpasswd2 -p -u `hostname` -c cyrus
+
+# Cyrus IMAPD config
+cp /tmp/cyrus/imapd.conf /etc/imapd.conf
+cp /tmp/cyrus/cyrus.conf /etc/cyrus.conf
+sed -i -r 's/#admins: cyrus/admins: cyrus/g' /etc/imapd.conf
+
+if [ "$SMTP_ONLY" != 1 ]; then
+
+
+
+/etc/init.d/cyrus-imapd start
+
+# Fix Socket permission after daemon start
+dpkg-statoverride --force --update --add cyrus lmtp 750 /var/run/cyrus/socket/lmtp
+
+fi
 
 if [ -f /tmp/postfix/accounts.cf ]; then
   echo "Regenerating postfix 'vmailbox' and 'virtual' for given users"
@@ -21,22 +39,14 @@ if [ -f /tmp/postfix/accounts.cf ]; then
     # Let's go!
     echo "user '${user}' for domain '${domain}' with password '********'"
     echo "${login} ${domain}/${user}/" >> /etc/postfix/vmailbox
-    /usr/sbin/userdb ${login} set uid=5000 gid=5000 home=/var/mail/${domain}/${user} mail=/var/mail/${domain}/${user}
-    echo "${pass}" | userdbpw -md5 | userdb ${login} set systempw
+    # /usr/sbin/userdb ${login} set uid=5000 gid=5000 home=/var/mail/${domain}/${user} mail=/var/mail/${domain}/${user}
+    # echo "${pass}" | userdbpw -md5 | userdb ${login} set systempw
     echo "${pass}" | saslpasswd2 -p -c -u ${domain} ${login}
-    mkdir -p /var/mail/${domain}
-    if [ ! -d "/var/mail/${domain}/${user}" ]; then
-      maildirmake "/var/mail/${domain}/${user}"
-      maildirmake "/var/mail/${domain}/${user}/.Sent"
-      maildirmake "/var/mail/${domain}/${user}/.Trash"
-      maildirmake "/var/mail/${domain}/${user}/.Drafts"
-      echo -e "INBOX\nINBOX.Sent\nINBOX.Trash\nInbox.Drafts" >> "/var/mail/${domain}/${user}/courierimapsubscribed"
-      touch "/var/mail/${domain}/${user}/.Sent/maildirfolder"
-
-    fi
+    # Cyrus
+    echo -e "createmailbox user/${user}@${domain}\nexit" | sudo -u cyrus -i cyradm --user cyrus -w password localhost
     echo ${domain} >> /tmp/vhost.tmp
   done < /tmp/postfix/accounts.cf
-  makeuserdb
+  # makeuserdb
 else
   echo "==> Warning: '/tmp/postfix/accounts.cf' is not provided. No mail account created."
 fi
@@ -61,6 +71,9 @@ fi
 echo "Postfix configurations"
 touch /etc/postfix/vmailbox && postmap /etc/postfix/vmailbox
 touch /etc/postfix/virtual && postmap /etc/postfix/virtual
+
+postconf -e "virtual_transport = lmtp:unix:/var/run/cyrus/socket/lmtp"
+
 
 # DKIM
 grep -vE '^(\s*$|#)' /etc/postfix/vhost | while read domainname; do
@@ -126,14 +139,23 @@ case $DMS_SSL in
       sed -i -r 's/smtpd_tls_key_file=\/etc\/ssl\/private\/ssl-cert-snakeoil.key/smtpd_tls_key_file=\/etc\/letsencrypt\/live\/'$(hostname)'\/privkey.pem/g' /etc/postfix/main.cf
 
       # Courier configuration
-      cat "/etc/letsencrypt/live/$(hostname)/cert.pem" "/etc/letsencrypt/live/$(hostname)/chain.pem" "/etc/letsencrypt/live/$(hostname)/privkey.pem" > "/etc/letsencrypt/live/$(hostname)/combined.pem"
-      sed -i -r 's/TLS_CERTFILE=\/etc\/courier\/imapd.pem/TLS_CERTFILE=\/etc\/letsencrypt\/live\/'$(hostname)'\/combined.pem/g' /etc/courier/imapd-ssl
-
+      #cat "/etc/letsencrypt/live/$(hostname)/cert.pem" "/etc/letsencrypt/live/$(hostname)/chain.pem" "/etc/letsencrypt/live/$(hostname)/privkey.pem" > "/etc/letsencrypt/live/$(hostname)/combined.pem"
+      # sed -i -r 's/TLS_CERTFILE=\/etc\/courier\/imapd.pem/TLS_CERTFILE=\/etc\/letsencrypt\/live\/'$(hostname)'\/combined.pem/g' /etc/courier/imapd-ssl
       # POP3 courier configuration
-      sed -i -r 's/POP3_TLS_REQUIRED=0/POP3_TLS_REQUIRED=1/g' /etc/courier/pop3d-ssl
-      sed -i -r 's/TLS_CERTFILE=\/etc\/courier\/pop3d.pem/TLS_CERTFILE=\/etc\/letsencrypt\/live\/'$(hostname)'\/combined.pem/g' /etc/courier/pop3d-ssl
+      # sed -i -r 's/POP3_TLS_REQUIRED=0/POP3_TLS_REQUIRED=1/g' /etc/courier/pop3d-ssl
+      # sed -i -r 's/TLS_CERTFILE=\/etc\/courier\/pop3d.pem/TLS_CERTFILE=\/etc\/letsencrypt\/live\/'$(hostname)'\/combined.pem/g' /etc/courier/pop3d-ssl
       # needed to support gmail
-      sed -i -r 's/TLS_TRUSTCERTS=\/etc\/ssl\/certs/TLS_TRUSTCERTS=\/etc\/letsencrypt\/live\/'$(hostname)'\/fullchain.pem/g' /etc/courier/pop3d-ssl
+      # sed -i -r 's/TLS_TRUSTCERTS=\/etc\/ssl\/certs/TLS_TRUSTCERTS=\/etc\/letsencrypt\/live\/'$(hostname)'\/fullchain.pem/g' /etc/courier/pop3d-ssl
+
+
+      # Cyrus IMAPD configuration
+      sed -i -r 's/#imap_tls_cert_file: \/etc\/ssl\/certs\/cyrus-imap.pem\/imap_tls_cert_file: \/etc\/letsencrypt\/live\/'$(hostname)'\/fullchain.pem/g' /etc/imapd.conf
+      sed -i -r 's/#imap_tls_key_file: \/etc\/ssl\/private\/cyrus-imap.key/imap_tls_key_file: \/etc\/letsencrypt\/live\/'$(hostname)'\/privkey.pem/g' /etc/imapd.conf
+
+      sed -i -r 's/#tls_cert_file: \/etc\/ssl\/certs\/ssl-cert-snakeoil.pem\/tls_cert_file: \/etc\/letsencrypt\/live\/'$(hostname)'\/fullchain.pem/g' /etc/imapd.conf
+      sed -i -r 's/#tls_key_file: \/etc\/ssl\/private\/ssl-cert-snakeoil.key\/tls_key_file: \/etc\/letsencrypt\/live\/'$(hostname)'\/privkey.pem/g' /etc/imapd.conf
+
+
 
       echo "SSL configured with letsencrypt certificates"
 
@@ -158,7 +180,7 @@ case $DMS_SSL in
       sed -i -r 's/TLS_CERTFILE=\/etc\/courier\/pop3d.pem/TLS_CERTFILE=\/etc\/postfix\/ssl\/'$(hostname)'-full.pem/g' /etc/courier/pop3d-ssl
 
       echo "SSL configured with CA signed/custom certificates"
-      
+
     fi
     ;;
 
@@ -230,18 +252,6 @@ cron
 /etc/init.d/rsyslog start
 /etc/init.d/saslauthd start
 
-if [ "$SMTP_ONLY" != 1 ]; then
-
-/etc/init.d/courier-authdaemon start
-/etc/init.d/courier-imap start
-/etc/init.d/courier-imap-ssl start
-
-fi
-if [ "$ENABLE_POP3" = 1 -a "$SMTP_ONLY" != 1 ]; then
-  echo "Starting POP3 services"
-  /etc/init.d/courier-pop start
-  /etc/init.d/courier-pop-ssl start
-fi
 
 /etc/init.d/spamassassin start
 /etc/init.d/clamav-daemon start
@@ -254,5 +264,7 @@ fi
 echo "Listing SASL users"
 sasldblistusers2
 
+echo "Listing Cyrus Mailboxes"
+echo -e "lm\nexit" | sudo -u cyrus -i cyradm --user cyrus -w password localhost
 echo "Starting..."
 tail -f /var/log/mail.log
