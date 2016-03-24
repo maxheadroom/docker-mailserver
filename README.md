@@ -5,7 +5,10 @@ This is a fork of the wonderful Docker Mailserver by Tomav: https://github.com/t
 I've taken the liberty to replace the Courier Mail Server with Cyrus
 
 -----
+### TravisCI build status
+[![Build Status](https://travis-ci.org/maxheadroom/docker-mailserver.svg?branch=cyrusimapd)](https://travis-ci.org/maxheadroom/docker-mailserver)
 
+----
 A fullstack but simple mail server (smtp, imap, antispam, antivirus...).  
 Only configuration files, no SQL database. Keep it simple and versioned.  
 Easy to deploy and upgrade.  
